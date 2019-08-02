@@ -1,0 +1,195 @@
+<canvas id="game_canvas" width="600" height="600"> </canvas>
+
+<script>
+	canvas = document.getElementById("game_canvas");
+	ctx = canvas.getContext("2d");
+
+	//event listeners
+	document.addEventListener("keydown", handleInput);
+
+	//Game loop
+	var fps = 15
+	setInterval(tick, 1000/fps);
+
+	var Dir = {
+		UP: 1,
+		LEFT: 2,
+		DOWN: 3,
+		RIGHT: 4,
+	};
+
+	function randomPointIn(width, height) {
+		return new point(Math.floor(Math.random() * width), Math.floor(Math.random() * height));
+	}
+
+	function drawRect(x, y, size) {
+		ctx.fillRect(x * size + 1, y * size + 1, size-1, size-1);
+	}
+
+	class game {
+		constructor(size) {
+			this.rows = 20;
+			this.cols = this.rows;
+			this.gridSize = size/this.rows;
+			this.score = 0;
+
+			this.player = new player(this);
+			this.food = randomPointIn(this.cols, this.rows);
+		}
+
+		get startPos() {
+			return new point(Math.floor(this.rows/2), Math.floor(this.rows/2));
+		}
+
+		update() {
+			if (this.player.pos.equals(this.food)) {
+				this.food = randomPointIn(this.cols, this.rows);
+				this.player.grow();
+				this.score++;
+			}
+
+			this.player.update();
+		}
+
+		drawBackground(color) {
+			ctx.fillStyle = color;
+			var size = this.rows*this.gridSize;
+			ctx.fillRect(0, 0, size, size);
+		}
+
+		drawFood(color) {
+			ctx.fillStyle = color;
+			drawRect(this.food.x, this.food.y, this.gridSize);
+		}
+
+		draw() {
+			this.drawBackground("Black");
+			this.drawFood("Green");
+			this.player.draw();
+		}
+	}
+
+	class point {
+		constructor(x, y) {
+			this.x = x;
+			this.y = y;
+		}
+
+		equals(other) {
+			return (other.x == this.x && other.y == this.y);
+		}
+	}
+
+	class player {
+		constructor(game) {
+			this.game = game;
+			this.reset(5);
+		}
+
+		collided() {
+			for (var i=0; i<this.body.length; i++) {
+				if (this.pos.equals(this.body[i]))
+					return true;
+			}
+			return false;
+		}
+
+		reset(size) {
+			this.pos = this.game.startPos;
+			this.dir = Dir.UP;
+			this.body = [new point(this.pos.x, this.pos.y+size)];
+
+			for (var i=0; i<size; i++)
+				this.body.push(new point(this.body[i].x, this.body[i].y-1));
+		}
+
+		grow() {
+			this.body.unshift(new point(this.body[0]));
+		}
+
+		update() {
+			switch (this.dir) {
+				case Dir.UP:
+					this.pos = new point(this.pos.x, this.pos.y-1);
+					break;
+				case Dir.LEFT:
+					this.pos = new point(this.pos.x-1, this.pos.y);
+					break;
+				case Dir.RIGHT:
+					this.pos = new point(this.pos.x+1, this.pos.y);
+					break;
+				case Dir.DOWN:
+					this.pos = new point(this.pos.x, this.pos.y+1);
+					break;
+			}
+			this.wrap(this.pos);
+
+			if (this.collided()) {
+				this.reset();
+				return;
+			}
+
+			this.body.shift();
+			this.body.push(new point(this.pos.x, this.pos.y));
+		}
+
+		wrap(p) {
+			if (p.x < 0)
+				p.x = this.game.cols-1;
+			if (p.x > this.game.cols-1)
+				p.x = 0;
+			if (p.y < 0)
+				p.y = this.game.rows-1;
+			if (p.y > this.game.rows-1)
+				p.y = 0;
+		}
+
+		draw() {
+			ctx.fillStyle = "red";
+			for (var i=0; i<this.body.length; i++)
+				drawRect(this.body[i].x, this.body[i].y, this.game.gridSize);
+		}
+
+		turnUp() {
+			if (this.dir != Dir.DOWN)
+				this.dir = Dir.UP;
+		}
+		turnLeft() {
+			if (this.dir != Dir.RIGHT)
+				this.dir = Dir.LEFT;
+		}
+		turnDown() {
+			if (this.dir != Dir.UP)
+				this.dir = Dir.DOWN;
+		}
+		turnRight() {
+			if (this.dir != Dir.LEFT)
+				this.dir = Dir.RIGHT;
+		}
+	}
+
+	function handleInput(event) {
+		switch(event.key) {
+			case "ArrowUp":
+				snake.player.turnUp();
+				break;
+			case "ArrowLeft":
+				snake.player.turnLeft();
+				break;
+			case "ArrowDown":
+				snake.player.turnDown();
+				break;
+			case "ArrowRight":
+				snake.player.turnRight();
+				break;
+		}
+	}
+
+	//create game
+	snake = new game(600);
+
+	function tick() {
+		snake.update();
+		snake.draw();
+	}
+</script>
